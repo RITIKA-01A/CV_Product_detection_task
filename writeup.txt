@@ -1,0 +1,141 @@
+Deep Learning Challenge – Problem 1: Shelf Product Detection
+1. Introduction
+
+The objective of Problem 1 is to detect and locate specific products within grocery shelf images. The dataset contains 3,153 shelf images and 300 product images representing 100 unique products. Each product has three images captured from different angles.
+
+The task requires identifying all shelf images containing each product and recording the bounding boxes for every occurrence. Since no labeled data is provided, the solution relies on visual similarity between product images and detected regions on the shelves.
+
+This write-up explains the approach, methodology, implementation, results, and potential improvements.
+
+2. Dataset Overview
+Shelf Images
+
+Captured in real grocery stores with proper lighting.
+
+Contain multiple products and may have multiple instances of the same product.
+
+Filenames: db1.jpg … db3153.jpg.
+
+Product Images
+
+300 images corresponding to 100 unique products.
+
+Each product has three images to capture different angles and perspectives.
+
+Filenames: qr1.jpg … qr300.jpg.
+
+3. Approach
+
+The solution uses a two-stage pipeline combining object detection and embedding-based matching:
+
+3.1 Stage 1 – Product Embedding Computation
+
+CLIP (ViT-B/32) is used to extract embeddings for each product image.
+
+For each product, the embeddings of its three images are averaged to produce a single representative embedding.
+
+This ensures robustness to angle variations and minor lighting differences.
+
+The resulting embedding dictionary is: {product_id: embedding}.
+
+3.2 Stage 2 – Shelf Detection and Matching
+
+YOLOv8 (pre-trained on COCO) is used for region proposals in shelf images.
+
+Each detected region (crop) is extracted and encoded using CLIP.
+
+Cosine similarity is calculated between the crop embedding and all product embeddings.
+
+A match is considered valid if similarity ≥ 0.8 (threshold configurable).
+
+Each valid match is saved in the output file as:
+
+product_id, shelf_id, x_min, y_min, x_max, y_max
+
+3.3 Visualization (Optional)
+
+Bounding boxes and product IDs are drawn on the first few shelf images to verify correctness.
+
+This helps ensure YOLO proposals and embedding matching are working as expected.
+
+3.4 Advantages of This Approach
+
+Zero-shot detection: No training required; leverages pre-trained models.
+
+Angle-invariant matching: Averaging multiple product images accounts for different perspectives.
+
+Modular design: Threshold and visualization can be adjusted for debugging or extended for Problem 2.
+
+4. Implementation
+File Structure
+main.py          # Pipeline orchestrating detection and matching
+utils.py         # Helper functions: embeddings, matching
+products/        # Product images
+shelves/         # Shelf images
+solution_1.txt   # Generated output file
+
+Key Functions
+
+get_embedding(image_path) – extracts CLIP embedding from a single image.
+
+average_product_embeddings(product_dir) – averages embeddings for the three images of each product.
+
+match_crop_with_products(crop_emb, product_embeddings, threshold) – computes cosine similarity between crop embedding and all product embeddings.
+
+Dependencies
+
+Python 3.8+, PyTorch, CLIP, Ultralytics YOLOv8, OpenCV, PIL, scikit-learn, numpy
+
+Run the pipeline
+
+python main.py
+
+
+Parameters such as product/shelf directories, similarity threshold, output file, and visualization can be configured.
+
+5. Results
+
+Generated solution_1.txt containing all detected product instances across the shelf images.
+
+Progress logging allows monitoring the number of detections per shelf and processing time.
+
+Optional visualization verified that the predicted bounding boxes correspond to the correct products.
+
+Example output format:
+
+52,1731,1884,954,2190,1419
+53,1731,1884,954,2190,1419
+52,1739,36,1053,315,1515
+
+
+Observations:
+
+Multiple instances of the same product are correctly identified.
+
+The pipeline successfully handles variations in product size, angle, and placement on shelves.
+
+6. Limitations & Future Work
+
+Missed detections: Small or heavily occluded products may be missed due to YOLO region proposals.
+
+False positives: Products with visual similarity but not exact matches may occasionally be matched.
+
+Future improvements:
+
+Fine-tune YOLOv8 on grocery shelf dataset for more accurate proposals.
+
+Fine-tune CLIP embeddings using a small labeled set of product images.
+
+Multi-scale detection for better handling of small or overlapping products.
+
+Batch processing and GPU optimization for faster inference.
+
+7. References
+
+Radford, A., Kim, J.W., Hallacy, C., et al. (2021). Learning Transferable Visual Models From Natural Language Supervision. arXiv:2103.00020.
+
+Ultralytics YOLOv8 Documentation: https://docs.ultralytics.com/
+
+OpenAI CLIP GitHub: https://github.com/openai/CLIP
+
+Pedregosa, F., et al. (2011). Scikit-learn: Machine Learning in Python. JMLR, 12, 2825–2830.
